@@ -1,17 +1,50 @@
+'use client';
+
+import { useState, useEffect } from 'react';
 import Hero from '@/components/Hero';
 import Members from '@/components/Members';
 import MeetingRecords from '@/components/MeetingRecords';
 import GoalsDashboard from '@/components/GoalsDashboard';
 import ContactBoard from '@/components/ContactBoard';
+import AdminMode from '@/components/AdminMode';
 
 export default function Home() {
+  const [isAdminMode, setIsAdminMode] = useState(false);
+  const [showAdminButton, setShowAdminButton] = useState(false);
+
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && e.key === 'A') {
+        setShowAdminButton(!showAdminButton);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [showAdminButton]);
+
   return (
-    <main className="min-h-screen">
+    <main className="min-h-screen relative">
       <Hero />
       <Members />
       <MeetingRecords />
       <GoalsDashboard />
       <ContactBoard />
+
+      {showAdminButton && (
+        <button
+          onClick={() => setIsAdminMode(true)}
+          className="fixed bottom-8 right-8 bg-calmBrown text-white px-6 py-3 rounded-full shadow-lg hover:bg-opacity-90 transition-all z-40"
+        >
+          관리자 모드
+        </button>
+      )}
+
+      <AdminMode isOpen={isAdminMode} onClose={() => setIsAdminMode(false)} />
+
+      <div className="fixed bottom-4 left-4 text-xs text-gray-400 opacity-50">
+        Ctrl+Shift+A로 관리자 모드 활성화
+      </div>
     </main>
   );
 }

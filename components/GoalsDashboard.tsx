@@ -1,61 +1,47 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useLocalStorage } from '@/lib/useLocalStorage';
+import { Goal } from '@/lib/types';
 
-interface Goal {
-  id: number;
-  title: string;
-  description: string;
-  status: 'pending' | 'in-progress' | 'completed' | 'revised';
-  progress: number;
-  createdBy: string;
-  createdAt: string;
-  updatedAt: string;
-  tags: string[];
-}
-
-const goals: Goal[] = [
+const defaultGoals: Goal[] = [
   {
-    id: 1,
+    id: '1',
     title: '웹사이트 MVP 개발',
     description: '기본 기능을 갖춘 웹사이트 첫 버전 완성',
     status: 'in-progress',
     progress: 75,
-    createdBy: '김지수',
-    createdAt: '2024-11-01',
+    author: '김지수',
     updatedAt: '2024-11-15',
     tags: ['개발', '우선순위'],
   },
   {
-    id: 2,
+    id: '2',
     title: '사용자 피드백 시스템 구축',
     description: '방문자들이 의견을 남길 수 있는 게시판 기능',
     status: 'in-progress',
     progress: 40,
-    createdBy: '이민호',
-    createdAt: '2024-11-05',
+    author: '이민호',
     updatedAt: '2024-11-14',
     tags: ['기능', '소통'],
   },
   {
-    id: 3,
+    id: '3',
     title: '디자인 시스템 확립',
     description: '일관된 디자인 가이드라인 및 컴포넌트 라이브러리',
     status: 'completed',
     progress: 100,
-    createdBy: '박서연',
-    createdAt: '2024-11-01',
+    author: '박서연',
     updatedAt: '2024-11-10',
     tags: ['디자인', '완료'],
   },
   {
-    id: 4,
+    id: '4',
     title: '모바일 반응형 최적화',
     description: '모든 디바이스에서 완벽한 사용자 경험 제공',
     status: 'pending',
     progress: 0,
-    createdBy: '최준영',
-    createdAt: '2024-11-12',
+    author: '최준영',
     updatedAt: '2024-11-12',
     tags: ['개발', '계획'],
   },
@@ -64,6 +50,14 @@ const goals: Goal[] = [
 export default function GoalsDashboard() {
   const [selectedFilter, setSelectedFilter] = useState<string>('all');
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
+  const [goals] = useLocalStorage<Goal[]>('school-goals', defaultGoals);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const displayGoals = mounted ? goals : defaultGoals;
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -73,8 +67,6 @@ export default function GoalsDashboard() {
         return 'bg-softOrange';
       case 'pending':
         return 'bg-gray-400';
-      case 'revised':
-        return 'bg-yellow-500';
       default:
         return 'bg-gray-400';
     }
@@ -88,18 +80,16 @@ export default function GoalsDashboard() {
         return '진행 중';
       case 'pending':
         return '대기';
-      case 'revised':
-        return '수정됨';
       default:
         return status;
     }
   };
 
   const filteredGoals = selectedFilter === 'all' 
-    ? goals 
-    : goals.filter(goal => goal.tags.includes(selectedFilter));
+    ? displayGoals 
+    : displayGoals.filter(goal => goal.tags.includes(selectedFilter));
 
-  const allTags = Array.from(new Set(goals.flatMap(g => g.tags)));
+  const allTags = Array.from(new Set(displayGoals.flatMap(g => g.tags)));
 
   return (
     <section className="py-20 bg-white">
@@ -184,7 +174,7 @@ export default function GoalsDashboard() {
               </div>
               
               <div className="text-xs text-gray-500">
-                <p>작성자: {goal.createdBy}</p>
+                <p>작성자: {goal.author}</p>
                 <p>업데이트: {goal.updatedAt}</p>
               </div>
             </div>
@@ -212,10 +202,7 @@ export default function GoalsDashboard() {
                   <strong>진행률:</strong> {selectedGoal.progress}%
                 </p>
                 <p>
-                  <strong>작성자:</strong> {selectedGoal.createdBy}
-                </p>
-                <p>
-                  <strong>생성일:</strong> {selectedGoal.createdAt}
+                  <strong>작성자:</strong> {selectedGoal.author}
                 </p>
                 <p>
                   <strong>최종 업데이트:</strong> {selectedGoal.updatedAt}

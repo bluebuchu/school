@@ -1,20 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useLocalStorage } from '@/lib/useLocalStorage';
+import { Meeting } from '@/lib/types';
 
-interface Meeting {
-  id: number;
-  date: string;
-  title: string;
-  summary: string;
-  decisions: string[];
-  nextActions: string[];
-  participants: string[];
-}
-
-const meetings: Meeting[] = [
+const defaultMeetings: Meeting[] = [
   {
-    id: 1,
+    id: '1',
     date: '2024-11-01',
     title: '프로젝트 킥오프 미팅',
     summary: '프로젝트 비전과 목표 설정',
@@ -28,10 +20,9 @@ const meetings: Meeting[] = [
       '개발 환경 구성',
       '디자인 시안 초안 작성',
     ],
-    participants: ['김지수', '이민호', '박서연', '최준영'],
   },
   {
-    id: 2,
+    id: '2',
     date: '2024-11-08',
     title: '첫 번째 스프린트 회고',
     summary: '초기 개발 진행 상황 점검',
@@ -43,12 +34,19 @@ const meetings: Meeting[] = [
       '컴포넌트 구조 설계',
       'API 엔드포인트 정의',
     ],
-    participants: ['김지수', '이민호', '박서연'],
   },
 ];
 
 export default function MeetingRecords() {
   const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
+  const [meetings] = useLocalStorage<Meeting[]>('school-meetings', defaultMeetings);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const displayMeetings = mounted ? meetings : defaultMeetings;
 
   return (
     <section className="py-20 bg-gradient-to-b from-white to-beige">
@@ -64,7 +62,7 @@ export default function MeetingRecords() {
           <div className="lg:col-span-1">
             <h3 className="text-xl font-bold text-calmBrown mb-4">회의 목록</h3>
             <div className="space-y-3">
-              {meetings.map((meeting) => (
+              {displayMeetings.map((meeting) => (
                 <button
                   key={meeting.id}
                   onClick={() => setSelectedMeeting(meeting)}
@@ -110,20 +108,6 @@ export default function MeetingRecords() {
                       <li key={idx} className="text-gray-700">{action}</li>
                     ))}
                   </ul>
-                </div>
-                
-                <div className="border-t pt-4">
-                  <h4 className="font-semibold text-lg text-calmBrown mb-2">참석자</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {selectedMeeting.participants.map((participant, idx) => (
-                      <span
-                        key={idx}
-                        className="px-3 py-1 bg-beige rounded-full text-sm text-calmBrown"
-                      >
-                        {participant}
-                      </span>
-                    ))}
-                  </div>
                 </div>
               </div>
             ) : (

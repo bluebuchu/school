@@ -10,9 +10,14 @@ module.exports = {
       colors: {
         background: "var(--background)",
         foreground: "var(--foreground)",
-        beige: "#F5E6D3",
-        softOrange: "#FFB68A",
-        calmBrown: "#8B7355",
+        beige: "#E6DDD4",
+        softOrange: "#E6B891",
+        calmBrown: "#6B8E6B",
+        skyBlue: "#87CEEB",
+        cloudWhite: "#F8F9FA",
+        sageGreen: "#6B8E6B",
+        softGray: "#D3D9E0",
+        warmBeige: "#E6DDD4",
       },
       fontFamily: {
         pretendard: ["Pretendard", "sans-serif"],
