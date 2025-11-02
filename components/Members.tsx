@@ -1,53 +1,46 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useLocalStorage } from '@/lib/useLocalStorage';
+import { supabase } from '@/lib/supabase';
 import { Member } from '@/lib/types';
-
-const defaultMembers: Member[] = [
-  {
-    id: '1',
-    name: '김지수',
-    role: '프로젝트 리더',
-    comment: '함께 배우는 즐거움을 나누고 싶어요',
-    instagram: '#',
-    linkedin: '#',
-  },
-  {
-    id: '2',
-    name: '이민호',
-    role: '개발자',
-    comment: '코드로 꿈을 현실로 만들어요',
-    facebook: '#',
-    linkedin: '#',
-  },
-  {
-    id: '3',
-    name: '박서연',
-    role: '디자이너',
-    comment: '아름다운 경험을 디자인합니다',
-    instagram: '#',
-    facebook: '#',
-  },
-  {
-    id: '4',
-    name: '최준영',
-    role: '기획자',
-    comment: '모두의 아이디어를 하나로',
-    linkedin: '#',
-  },
-];
 
 export default function Members() {
   const [hoveredMember, setHoveredMember] = useState<string | null>(null);
-  const [members] = useLocalStorage<Member[]>('school-members', defaultMembers);
-  const [mounted, setMounted] = useState(false);
+  const [members, setMembers] = useState<Member[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setMounted(true);
+    fetchMembers();
   }, []);
 
-  const displayMembers = mounted ? members : defaultMembers;
+  const fetchMembers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('members')
+        .select('*')
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching members:', error);
+      } else {
+        setMembers(data || []);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <section className="py-20 bg-white">
+        <div className="container mx-auto px-4 text-center">
+          <div className="text-calmBrown">데이터를 불러오는 중...</div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="py-20 bg-white">
@@ -60,7 +53,7 @@ export default function Members() {
         </p>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-          {displayMembers.map((member) => (
+          {members.map((member) => (
             <div
               key={member.id}
               className="relative group"

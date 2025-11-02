@@ -1,52 +1,51 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useLocalStorage } from '@/lib/useLocalStorage';
+import { supabase } from '@/lib/supabase';
 import { Meeting } from '@/lib/types';
-
-const defaultMeetings: Meeting[] = [
-  {
-    id: '1',
-    date: '2024-11-01',
-    title: '프로젝트 킥오프 미팅',
-    summary: '프로젝트 비전과 목표 설정',
-    decisions: [
-      '프로젝트명을 "다시 학교"로 확정',
-      '2주 단위 스프린트 진행',
-      '매주 화요일 정기 회의',
-    ],
-    nextActions: [
-      '프로젝트 로드맵 작성',
-      '개발 환경 구성',
-      '디자인 시안 초안 작성',
-    ],
-  },
-  {
-    id: '2',
-    date: '2024-11-08',
-    title: '첫 번째 스프린트 회고',
-    summary: '초기 개발 진행 상황 점검',
-    decisions: [
-      'Next.js + Tailwind CSS 기술 스택 확정',
-      'Supabase를 백엔드로 사용',
-    ],
-    nextActions: [
-      '컴포넌트 구조 설계',
-      'API 엔드포인트 정의',
-    ],
-  },
-];
 
 export default function MeetingRecords() {
   const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
-  const [meetings] = useLocalStorage<Meeting[]>('school-meetings', defaultMeetings);
-  const [mounted, setMounted] = useState(false);
+  const [meetings, setMeetings] = useState<Meeting[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setMounted(true);
+    fetchMeetings();
   }, []);
 
-  const displayMeetings = mounted ? meetings : defaultMeetings;
+  const fetchMeetings = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('meetings')
+        .select('*')
+        .order('date', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching meetings:', error);
+      } else {
+        // next_actions 필드명을 nextActions로 변환
+        const formattedData = data?.map(meeting => ({
+          ...meeting,
+          nextActions: meeting.next_actions
+        })) || [];
+        setMeetings(formattedData);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <section className="py-20 bg-gradient-to-b from-white to-beige">
+        <div className="container mx-auto px-4 text-center">
+          <div className="text-calmBrown">회의 기록을 불러오는 중...</div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="py-20 bg-gradient-to-b from-white to-beige">
@@ -62,7 +61,7 @@ export default function MeetingRecords() {
           <div className="lg:col-span-1">
             <h3 className="text-xl font-bold text-calmBrown mb-4">회의 목록</h3>
             <div className="space-y-3">
-              {displayMeetings.map((meeting) => (
+              {meetings.map((meeting) => (
                 <button
                   key={meeting.id}
                   onClick={() => setSelectedMeeting(meeting)}

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useLocalStorage } from '@/lib/useLocalStorage';
+import { supabase } from '@/lib/supabase';
 import { Member, Meeting, Goal, Contact, Message } from '@/lib/types';
 
 interface AdminModeProps {
@@ -11,10 +11,10 @@ interface AdminModeProps {
 
 export default function AdminMode({ isOpen, onClose }: AdminModeProps) {
   const [activeTab, setActiveTab] = useState<'members' | 'meetings' | 'goals' | 'contact' | 'messages'>('members');
-  const [members, setMembers] = useLocalStorage<Member[]>('school-members', []);
-  const [meetings, setMeetings] = useLocalStorage<Meeting[]>('school-meetings', []);
-  const [goals, setGoals] = useLocalStorage<Goal[]>('school-goals', []);
-  const [contact, setContact] = useLocalStorage<Contact>('school-contact', {
+  const [members, setMembers] = useState<Member[]>([]);
+  const [meetings, setMeetings] = useState<Meeting[]>([]);
+  const [goals, setGoals] = useState<Goal[]>([]);
+  const [contact, setContact] = useState<Contact>({
     id: '1',
     email: 'contact@dasischool.com',
     address: '서울시 강남구',
@@ -22,39 +22,130 @@ export default function AdminMode({ isOpen, onClose }: AdminModeProps) {
     facebook: '#',
     twitter: '#',
   });
-  const [messages, setMessages] = useLocalStorage<Message[]>('school-messages', []);
+  const [messages, setMessages] = useState<Message[]>([]);
   
   const [editingMember, setEditingMember] = useState<Member | null>(null);
   const [editingMeeting, setEditingMeeting] = useState<Meeting | null>(null);
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
 
+  useEffect(() => {
+    if (isOpen) {
+      fetchMembers();
+      fetchMeetings();
+    }
+  }, [isOpen]);
+
+  const fetchMembers = async () => {
+    const { data, error } = await supabase.from('members').select('*').order('created_at', { ascending: true });
+    if (error) {
+      console.error('Error fetching members:', error);
+    } else {
+      setMembers(data || []);
+    }
+  };
+
+  const fetchMeetings = async () => {
+    const { data, error } = await supabase.from('meetings').select('*').order('date', { ascending: false });
+    if (error) {
+      console.error('Error fetching meetings:', error);
+    } else {
+      const formattedData = data?.map(meeting => ({
+        ...meeting,
+        nextActions: meeting.next_actions
+      })) || [];
+      setMeetings(formattedData);
+    }
+  };
+
   if (!isOpen) return null;
 
-  const handleSaveMember = (member: Member) => {
-    if (editingMember) {
-      setMembers(members.map(m => m.id === member.id ? member : m));
-    } else {
-      setMembers([...members, { ...member, id: Date.now().toString() }]);
+  const handleSaveMember = async (member: Member) => {
+    try {
+      if (editingMember) {
+        const { error } = await supabase
+          .from('members')
+          .update({
+            name: member.name,
+            role: member.role,
+            comment: member.comment,
+            instagram: member.instagram || null,
+            facebook: member.facebook || null,
+            linkedin: member.linkedin || null
+          })
+          .eq('id', member.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('members')
+          .insert({
+            id: Date.now().toString(),
+            name: member.name,
+            role: member.role,
+            comment: member.comment,
+            instagram: member.instagram || null,
+            facebook: member.facebook || null,
+            linkedin: member.linkedin || null
+          });
+        if (error) throw error;
+      }
+      setEditingMember(null);
+      fetchMembers();
+    } catch (error) {
+      console.error('Error saving member:', error);
     }
-    setEditingMember(null);
   };
 
-  const handleDeleteMember = (id: string) => {
-    setMembers(members.filter(m => m.id !== id));
-  };
-
-  const handleSaveMeeting = (meeting: Meeting) => {
-    if (editingMeeting) {
-      setMeetings(meetings.map(m => m.id === meeting.id ? meeting : m));
-    } else {
-      setMeetings([...meetings, { ...meeting, id: Date.now().toString() }]);
+  const handleDeleteMember = async (id: string) => {
+    try {
+      const { error } = await supabase.from('members').delete().eq('id', id);
+      if (error) throw error;
+      fetchMembers();
+    } catch (error) {
+      console.error('Error deleting member:', error);
     }
-    setEditingMeeting(null);
   };
 
-  const handleDeleteMeeting = (id: string) => {
-    setMeetings(meetings.filter(m => m.id !== id));
+  const handleSaveMeeting = async (meeting: Meeting) => {
+    try {
+      const meetingData = {
+        date: meeting.date,
+        title: meeting.title,
+        summary: meeting.summary,
+        decisions: meeting.decisions,
+        next_actions: meeting.nextActions
+      };
+      
+      if (editingMeeting) {
+        const { error } = await supabase
+          .from('meetings')
+          .update(meetingData)
+          .eq('id', meeting.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('meetings')
+          .insert({
+            id: Date.now().toString(),
+            ...meetingData
+          });
+        if (error) throw error;
+      }
+      setEditingMeeting(null);
+      fetchMeetings();
+    } catch (error) {
+      console.error('Error saving meeting:', error);
+    }
+  };
+
+  const handleDeleteMeeting = async (id: string) => {
+    try {
+      const { error } = await supabase.from('meetings').delete().eq('id', id);
+      if (error) throw error;
+      fetchMeetings();
+    } catch (error) {
+      console.error('Error deleting meeting:', error);
+    }
   };
 
   const handleSaveGoal = (goal: Goal) => {
