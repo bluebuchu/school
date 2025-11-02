@@ -1,63 +1,52 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useLocalStorage } from '@/lib/useLocalStorage';
+import { supabase } from '@/lib/supabase';
 import { Goal } from '@/lib/types';
-
-const defaultGoals: Goal[] = [
-  {
-    id: '1',
-    title: '웹사이트 MVP 개발',
-    description: '기본 기능을 갖춘 웹사이트 첫 버전 완성',
-    status: 'in-progress',
-    progress: 75,
-    author: '김지수',
-    updatedAt: '2024-11-15',
-    tags: ['개발', '우선순위'],
-  },
-  {
-    id: '2',
-    title: '사용자 피드백 시스템 구축',
-    description: '방문자들이 의견을 남길 수 있는 게시판 기능',
-    status: 'in-progress',
-    progress: 40,
-    author: '이민호',
-    updatedAt: '2024-11-14',
-    tags: ['기능', '소통'],
-  },
-  {
-    id: '3',
-    title: '디자인 시스템 확립',
-    description: '일관된 디자인 가이드라인 및 컴포넌트 라이브러리',
-    status: 'completed',
-    progress: 100,
-    author: '박서연',
-    updatedAt: '2024-11-10',
-    tags: ['디자인', '완료'],
-  },
-  {
-    id: '4',
-    title: '모바일 반응형 최적화',
-    description: '모든 디바이스에서 완벽한 사용자 경험 제공',
-    status: 'pending',
-    progress: 0,
-    author: '최준영',
-    updatedAt: '2024-11-12',
-    tags: ['개발', '계획'],
-  },
-];
 
 export default function GoalsDashboard() {
   const [selectedFilter, setSelectedFilter] = useState<string>('all');
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
-  const [goals] = useLocalStorage<Goal[]>('school-goals', defaultGoals);
-  const [mounted, setMounted] = useState(false);
+  const [goals, setGoals] = useState<Goal[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setMounted(true);
+    fetchGoals();
   }, []);
 
-  const displayGoals = mounted ? goals : defaultGoals;
+  const fetchGoals = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('goals')
+        .select('*')
+        .order('updated_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching goals:', error);
+      } else {
+        // updated_at 필드명을 updatedAt로 변환
+        const formattedData = data?.map(goal => ({
+          ...goal,
+          updatedAt: goal.updated_at
+        })) || [];
+        setGoals(formattedData);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <section className="py-20 bg-white">
+        <div className="container mx-auto px-4 text-center">
+          <div className="text-calmBrown">목표를 불러오는 중...</div>
+        </div>
+      </section>
+    );
+  }
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -86,10 +75,10 @@ export default function GoalsDashboard() {
   };
 
   const filteredGoals = selectedFilter === 'all' 
-    ? displayGoals 
-    : displayGoals.filter(goal => goal.tags.includes(selectedFilter));
+    ? goals 
+    : goals.filter(goal => goal.tags.includes(selectedFilter));
 
-  const allTags = Array.from(new Set(displayGoals.flatMap(g => g.tags)));
+  const allTags = Array.from(new Set(goals.flatMap(g => g.tags)));
 
   return (
     <section className="py-20 bg-white">

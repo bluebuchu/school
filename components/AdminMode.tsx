@@ -33,6 +33,7 @@ export default function AdminMode({ isOpen, onClose }: AdminModeProps) {
     if (isOpen) {
       fetchMembers();
       fetchMeetings();
+      fetchGoals();
     }
   }, [isOpen]);
 
@@ -55,6 +56,19 @@ export default function AdminMode({ isOpen, onClose }: AdminModeProps) {
         nextActions: meeting.next_actions
       })) || [];
       setMeetings(formattedData);
+    }
+  };
+
+  const fetchGoals = async () => {
+    const { data, error } = await supabase.from('goals').select('*').order('updated_at', { ascending: false });
+    if (error) {
+      console.error('Error fetching goals:', error);
+    } else {
+      const formattedData = data?.map(goal => ({
+        ...goal,
+        updatedAt: goal.updated_at
+      })) || [];
+      setGoals(formattedData);
     }
   };
 
@@ -148,17 +162,48 @@ export default function AdminMode({ isOpen, onClose }: AdminModeProps) {
     }
   };
 
-  const handleSaveGoal = (goal: Goal) => {
-    if (editingGoal) {
-      setGoals(goals.map(g => g.id === goal.id ? goal : g));
-    } else {
-      setGoals([...goals, { ...goal, id: Date.now().toString(), updatedAt: new Date().toISOString().split('T')[0] }]);
+  const handleSaveGoal = async (goal: Goal) => {
+    try {
+      const goalData = {
+        title: goal.title,
+        description: goal.description,
+        progress: goal.progress,
+        status: goal.status,
+        tags: goal.tags,
+        author: goal.author,
+        updated_at: new Date().toISOString().split('T')[0]
+      };
+      
+      if (editingGoal) {
+        const { error } = await supabase
+          .from('goals')
+          .update(goalData)
+          .eq('id', goal.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('goals')
+          .insert({
+            id: Date.now().toString(),
+            ...goalData
+          });
+        if (error) throw error;
+      }
+      setEditingGoal(null);
+      fetchGoals();
+    } catch (error) {
+      console.error('Error saving goal:', error);
     }
-    setEditingGoal(null);
   };
 
-  const handleDeleteGoal = (id: string) => {
-    setGoals(goals.filter(g => g.id !== id));
+  const handleDeleteGoal = async (id: string) => {
+    try {
+      const { error } = await supabase.from('goals').delete().eq('id', id);
+      if (error) throw error;
+      fetchGoals();
+    } catch (error) {
+      console.error('Error deleting goal:', error);
+    }
   };
 
   const handleSaveContact = (contactData: Contact) => {
