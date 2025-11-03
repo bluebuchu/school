@@ -8,10 +8,64 @@ export default function Members() {
   const [hoveredMember, setHoveredMember] = useState<string | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
+  const [availableImages, setAvailableImages] = useState<string[]>([]);
 
   useEffect(() => {
-    fetchMembers();
+    // 이미지 목록 가져오기
+    fetch('/api/images')
+      .then(res => res.json())
+      .then(data => {
+        const images = data.images.map((img: any) => img.path);
+        setAvailableImages(images);
+      })
+      .catch(error => {
+        console.error('Failed to fetch images:', error);
+      });
   }, []);
+
+  useEffect(() => {
+    if (availableImages.length >= 0) {
+      fetchMembers();
+    }
+  }, [availableImages]);
+
+  useEffect(() => {
+    // 멤버 변경 감지를 위한 리스너
+    const subscription = supabase
+      .channel('members_changes')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'members' 
+      }, () => {
+        fetchMembers();
+      })
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  // 이름 기반 자동 이미지 매칭 함수
+  const findMatchingImage = (memberName: string): string | null => {
+    // 1. 정확한 이름 매칭 (예: "홍길동.png")
+    const exactMatch = availableImages.find(img => 
+      img.toLowerCase() === `/${memberName.toLowerCase()}.png` ||
+      img.toLowerCase() === `/${memberName.toLowerCase()}.jpg` ||
+      img.toLowerCase() === `/${memberName.toLowerCase()}.jpeg`
+    );
+    if (exactMatch) return exactMatch;
+
+    // 2. 부분 매칭 (이름이 포함된 파일)
+    const partialMatch = availableImages.find(img => {
+      const fileName = img.toLowerCase().replace(/\.[^/.]+$/, ''); // 확장자 제거
+      return fileName.includes(memberName.toLowerCase());
+    });
+    if (partialMatch) return partialMatch;
+
+    return null;
+  };
 
   const fetchMembers = async () => {
     try {
@@ -23,7 +77,12 @@ export default function Members() {
       if (error) {
         console.error('Error fetching members:', error);
       } else {
-        setMembers(data || []);
+        // 이미지 경로 처리: 1) 저장된 이미지, 2) 자동 이름 매칭, 3) 기본값
+        const membersWithImages = (data || []).map(member => ({
+          ...member,
+          image: member.image || findMatchingImage(member.name) || null
+        }));
+        setMembers(membersWithImages);
       }
     } catch (error) {
       console.error('Error:', error);
@@ -60,9 +119,17 @@ export default function Members() {
               onMouseEnter={() => setHoveredMember(member.id)}
               onMouseLeave={() => setHoveredMember(null)}
             >
-              <div className="bg-beige rounded-lg p-6 transition-transform duration-300 group-hover:scale-105">
-                <div className="w-32 h-32 mx-auto mb-4 bg-gray-300 rounded-full overflow-hidden">
-                  <div className="w-full h-full bg-gradient-to-br from-softOrange to-calmBrown" />
+              <div className="bg-beige rounded-lg p-4 md:p-5 lg:p-6 transition-transform duration-300 group-hover:scale-105">
+                <div className="w-32 h-32 md:w-36 md:h-36 lg:w-40 lg:h-40 mx-auto mb-4 bg-gray-300 rounded-full overflow-hidden">
+                  {member.image ? (
+                    <img 
+                      src={member.image} 
+                      alt={member.name} 
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-softOrange to-calmBrown" />
+                  )}
                 </div>
                 
                 <h3 className="text-xl font-bold text-center text-calmBrown mb-1">

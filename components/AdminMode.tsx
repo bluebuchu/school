@@ -83,6 +83,7 @@ export default function AdminMode({ isOpen, onClose }: AdminModeProps) {
             name: member.name,
             role: member.role,
             comment: member.comment,
+            image: member.image || null,
             instagram: member.instagram || null,
             facebook: member.facebook || null,
             linkedin: member.linkedin || null
@@ -97,6 +98,7 @@ export default function AdminMode({ isOpen, onClose }: AdminModeProps) {
             name: member.name,
             role: member.role,
             comment: member.comment,
+            image: member.image || null,
             instagram: member.instagram || null,
             facebook: member.facebook || null,
             linkedin: member.linkedin || null
@@ -333,11 +335,66 @@ function MemberManager({ members, editingMember, onEdit, onSave, onDelete, onCan
       name: '',
       role: '',
       comment: '',
+      image: '',
       instagram: '',
       facebook: '',
       linkedin: '',
     }
   );
+  
+  // 동적으로 이미지 목록 가져오기
+  const [availableImages, setAvailableImages] = useState([
+    { value: '', label: '이미지 없음 (기본 아바타)' }
+  ]);
+  
+  // 동기화 상태
+  const [syncing, setSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState('');
+
+  const fetchImages = async () => {
+    try {
+      const res = await fetch('/api/images');
+      const data = await res.json();
+      const images = [
+        { value: '', label: '이미지 없음 (기본 아바타)' },
+        ...data.images.map((img: any) => ({
+          value: img.path,
+          label: img.name
+        }))
+      ];
+      setAvailableImages(images);
+    } catch (error) {
+      console.error('Failed to fetch images:', error);
+    }
+  };
+
+  const handleSyncImages = async () => {
+    setSyncing(true);
+    setSyncMessage('');
+    
+    try {
+      const res = await fetch('/api/sync-images', { method: 'POST' });
+      const data = await res.json();
+      
+      if (data.success) {
+        setSyncMessage(`✅ 동기화 완료! ${data.copiedFiles.length}개 추가, ${data.skippedFiles.length}개 스킵`);
+        // 이미지 목록 새로고침
+        await fetchImages();
+      } else {
+        setSyncMessage(`❌ 동기화 실패: ${data.message}`);
+      }
+    } catch (error) {
+      setSyncMessage('❌ 동기화 중 오류가 발생했습니다');
+    } finally {
+      setSyncing(false);
+      // 3초 후 메시지 제거
+      setTimeout(() => setSyncMessage(''), 3000);
+    }
+  };
+
+  useEffect(() => {
+    fetchImages();
+  }, []);
 
   useEffect(() => {
     if (editingMember) {
@@ -348,7 +405,25 @@ function MemberManager({ members, editingMember, onEdit, onSave, onDelete, onCan
   return (
     <div>
       <div className="mb-6">
-        <h3 className="text-xl font-bold mb-4">멤버 추가/수정</h3>
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-xl font-bold">멤버 추가/수정</h3>
+          <div className="flex items-center gap-3">
+            {syncMessage && (
+              <span className="text-sm">{syncMessage}</span>
+            )}
+            <button
+              onClick={handleSyncImages}
+              disabled={syncing}
+              className={`px-4 py-2 rounded-lg text-white font-medium transition-all ${
+                syncing 
+                  ? 'bg-gray-400 cursor-not-allowed' 
+                  : 'bg-blue-600 hover:bg-blue-700'
+              }`}
+            >
+              {syncing ? '동기화 중...' : '📁 이미지 동기화'}
+            </button>
+          </div>
+        </div>
         <div className="grid grid-cols-2 gap-4">
           <input
             type="text"
@@ -371,6 +446,44 @@ function MemberManager({ members, editingMember, onEdit, onSave, onDelete, onCan
             onChange={(e) => setFormData({ ...formData, comment: e.target.value })}
             className="px-4 py-2 border rounded-lg col-span-2"
           />
+          
+          {/* 이미지 선택 섹션 */}
+          <div className="col-span-2 space-y-2">
+            <label className="text-sm text-gray-600">프로필 이미지 선택</label>
+            <div className="flex gap-4 items-start">
+              <select
+                value={formData.image || ''}
+                onChange={(e) => setFormData({ ...formData, image: e.target.value })}
+                className="flex-1 px-4 py-2 border rounded-lg"
+              >
+                {availableImages.map((img) => (
+                  <option key={img.value} value={img.value}>
+                    {img.label}
+                  </option>
+                ))}
+              </select>
+              
+              {/* 이미지 프리뷰 */}
+              {formData.image && (
+                <div className="w-24 h-24 border-2 border-gray-300 rounded-full overflow-hidden bg-gray-100">
+                  <img 
+                    src={formData.image} 
+                    alt="프리뷰" 
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = 'none';
+                    }}
+                  />
+                </div>
+              )}
+              {!formData.image && (
+                <div className="w-24 h-24 border-2 border-gray-300 rounded-full bg-gradient-to-br from-softOrange to-calmBrown" />
+              )}
+            </div>
+            <p className="text-xs text-gray-500">
+              * 이미지가 없으면 기본 그라디언트 아바타가 표시됩니다
+            </p>
+          </div>
           <input
             type="text"
             placeholder="Instagram URL"
@@ -402,6 +515,7 @@ function MemberManager({ members, editingMember, onEdit, onSave, onDelete, onCan
                 name: '',
                 role: '',
                 comment: '',
+                image: '',
                 instagram: '',
                 facebook: '',
                 linkedin: '',
@@ -420,6 +534,7 @@ function MemberManager({ members, editingMember, onEdit, onSave, onDelete, onCan
                   name: '',
                   role: '',
                   comment: '',
+                  image: '',
                   instagram: '',
                   facebook: '',
                   linkedin: '',
@@ -438,10 +553,27 @@ function MemberManager({ members, editingMember, onEdit, onSave, onDelete, onCan
         <div className="space-y-2">
           {members.map((member: Member) => (
             <div key={member.id} className="flex justify-between items-center p-4 bg-beige rounded-lg">
-              <div>
-                <p className="font-semibold">{member.name}</p>
-                <p className="text-sm text-gray-600">{member.role}</p>
-                <p className="text-sm italic">{member.comment}</p>
+              <div className="flex items-center gap-3">
+                {/* 멤버 이미지 미니 프리뷰 */}
+                {member.image ? (
+                  <div className="w-16 h-16 rounded-full overflow-hidden bg-gray-100">
+                    <img 
+                      src={member.image} 
+                      alt={member.name}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-softOrange to-calmBrown" />
+                )}
+                <div>
+                  <p className="font-semibold">{member.name}</p>
+                  <p className="text-sm text-gray-600">{member.role}</p>
+                  <p className="text-xs italic text-gray-500 mt-1">{member.comment}</p>
+                </div>
               </div>
               <div className="flex gap-2">
                 <button
