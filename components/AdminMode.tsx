@@ -83,7 +83,6 @@ export default function AdminMode({ isOpen, onClose }: AdminModeProps) {
             name: member.name,
             role: member.role,
             comment: member.comment,
-            image: member.image || null,
             instagram: member.instagram || null,
             facebook: member.facebook || null,
             linkedin: member.linkedin || null
@@ -98,7 +97,6 @@ export default function AdminMode({ isOpen, onClose }: AdminModeProps) {
             name: member.name,
             role: member.role,
             comment: member.comment,
-            image: member.image || null,
             instagram: member.instagram || null,
             facebook: member.facebook || null,
             linkedin: member.linkedin || null
