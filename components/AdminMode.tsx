@@ -34,6 +34,7 @@ export default function AdminMode({ isOpen, onClose }: AdminModeProps) {
       fetchMembers();
       fetchMeetings();
       fetchGoals();
+      fetchMessages();
     }
   }, [isOpen]);
 
@@ -72,6 +73,21 @@ export default function AdminMode({ isOpen, onClose }: AdminModeProps) {
     }
   };
 
+  const fetchMessages = async () => {
+    const { data, error } = await supabase.from('messages').select('*').order('created_at', { ascending: false });
+    if (error) {
+      console.error('Error fetching messages:', error);
+    } else {
+      const formattedData = data?.map(msg => ({
+        ...msg,
+        isAnonymous: msg.is_anonymous,
+        reply: msg.admin_reply,
+        createdAt: msg.created_at ? new Date(msg.created_at).toLocaleDateString('ko-KR') : ''
+      })) || [];
+      setMessages(formattedData);
+    }
+  };
+
   if (!isOpen) return null;
 
   const handleSaveMember = async (member: Member) => {
@@ -83,6 +99,7 @@ export default function AdminMode({ isOpen, onClose }: AdminModeProps) {
             name: member.name,
             role: member.role,
             comment: member.comment,
+            image: member.image || null,
             instagram: member.instagram || null,
             facebook: member.facebook || null,
             linkedin: member.linkedin || null
@@ -97,6 +114,7 @@ export default function AdminMode({ isOpen, onClose }: AdminModeProps) {
             name: member.name,
             role: member.role,
             comment: member.comment,
+            image: member.image || null,
             instagram: member.instagram || null,
             facebook: member.facebook || null,
             linkedin: member.linkedin || null
@@ -210,17 +228,29 @@ export default function AdminMode({ isOpen, onClose }: AdminModeProps) {
     setContact(contactData);
   };
 
-  const handleSaveMessage = (message: Message) => {
-    if (editingMessage) {
-      setMessages(messages.map(m => m.id === message.id ? message : m));
-    } else {
-      setMessages([...messages, { ...message, id: Date.now().toString() }]);
+  const handleSaveMessage = async (message: Message) => {
+    try {
+      const { error } = await supabase
+        .from('messages')
+        .update({ admin_reply: message.reply })
+        .eq('id', message.id);
+      
+      if (error) throw error;
+      fetchMessages();
+    } catch (error) {
+      console.error('Error saving message reply:', error);
     }
     setEditingMessage(null);
   };
 
-  const handleDeleteMessage = (id: string) => {
-    setMessages(messages.filter(m => m.id !== id));
+  const handleDeleteMessage = async (id: string) => {
+    try {
+      const { error } = await supabase.from('messages').delete().eq('id', id);
+      if (error) throw error;
+      fetchMessages();
+    } catch (error) {
+      console.error('Error deleting message:', error);
+    }
   };
 
   return (

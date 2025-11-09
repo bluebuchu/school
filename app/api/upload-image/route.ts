@@ -55,56 +55,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Only image files are allowed' }, { status: 400 });
     }
 
-    // 파일명 안전하게 처리 (한글 지원) + 타임스탬프 추가로 중복 방지
+    // 파일명 안전하게 처리 (영어만 허용) + 타임스탬프 추가로 중복 방지
     const timestamp = Date.now();
-    const safeFileName = file.name.replace(/[^가-힣a-zA-Z0-9.-]/g, '_');
-    const fileName = `${timestamp}_${safeFileName}`;
+    const fileExtension = file.name.split('.').pop() || 'png';
+    const baseName = file.name.replace(/\.[^/.]+$/, ""); // 확장자 제거
+    // 한글과 특수문자를 제거하고 영어, 숫자, 하이픈, 언더스코어만 허용
+    const safeBaseName = baseName.replace(/[^a-zA-Z0-9-_]/g, '');
+    const fileName = `${timestamp}_${safeBaseName || 'image'}.${fileExtension}`;
     
     console.log('📄 Safe filename:', fileName);
     
     // 파일을 ArrayBuffer로 변환
     const bytes = await file.arrayBuffer();
     console.log('💾 File converted to ArrayBuffer, size:', bytes.byteLength);
-    
-    // 먼저 버킷이 존재하는지 확인
-    console.log('🗂️ Checking for existing buckets...');
-    const { data: buckets, error: listError } = await supabase.storage.listBuckets();
-    
-    if (listError) {
-      console.error('❌ Error listing buckets:', listError);
-      console.error('Full error details:', JSON.stringify(listError, null, 2));
-      return NextResponse.json({ 
-        error: `Storage access error: ${listError.message}. Please check Supabase configuration.` 
-      }, { status: 500 });
-    }
-
-    console.log('📋 Available buckets:', buckets?.map(b => b.name));
-    const bucketExists = buckets?.some(bucket => bucket.name === 'member-images');
-    console.log('🔍 member-images bucket exists:', bucketExists);
-    
-    if (!bucketExists) {
-      console.log('🔨 Attempting to create member-images bucket...');
-      // 버킷이 없으면 생성 시도
-      const { error: createError } = await supabase.storage.createBucket('member-images', {
-        public: true,
-        allowedMimeTypes: ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'],
-        fileSizeLimit: 10485760 // 10MB
-      });
-      
-      if (createError && !createError.message.includes('already exists')) {
-        console.error('❌ Error creating bucket:', createError);
-        console.error('Full create error:', JSON.stringify(createError, null, 2));
-        return NextResponse.json({ 
-          error: `Storage bucket creation failed: ${createError.message}. Please create "member-images" bucket manually in Supabase.` 
-        }, { status: 500 });
-      }
-      
-      if (!createError) {
-        console.log('✅ Bucket created successfully');
-      } else {
-        console.log('ℹ️ Bucket already exists (expected)');
-      }
-    }
     
     // Supabase Storage에 업로드
     console.log('⬆️ Starting upload to member-images bucket...');
@@ -122,18 +85,18 @@ export async function POST(request: NextRequest) {
       // 더 구체적인 에러 메시지
       if (error.message.includes('Bucket not found')) {
         return NextResponse.json({ 
-          error: 'Storage bucket not found. Please create "member-images" bucket in Supabase dashboard.' 
+          error: 'Storage bucket "member-images" not found. Please create it in Supabase dashboard with PUBLIC access.' 
         }, { status: 500 });
       }
       
-      if (error.message.includes('row-level security')) {
+      if (error.message.includes('row-level security') || error.message.includes('policy')) {
         return NextResponse.json({ 
-          error: 'Storage access denied. Please check bucket policies in Supabase dashboard.' 
+          error: 'Storage access denied. Please check bucket is PUBLIC and has proper policies in Supabase dashboard.' 
         }, { status: 500 });
       }
       
       return NextResponse.json({ 
-        error: `Upload failed: ${error.message}` 
+        error: `Upload failed: ${error.message}. Please ensure "member-images" bucket exists and is PUBLIC.` 
       }, { status: 500 });
     }
 

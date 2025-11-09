@@ -61,7 +61,10 @@ export default function ContactBoard() {
       } else {
         const formattedData = (data || []).map(msg => ({
           ...msg,
-          createdAt: msg.created_at?.split('T')[0] || new Date().toISOString().split('T')[0]
+          name: msg.is_anonymous ? '익명' : msg.name,
+          isAnonymous: msg.is_anonymous,
+          reply: msg.admin_reply,
+          createdAt: msg.created_at ? new Date(msg.created_at).toLocaleDateString('ko-KR') : new Date().toLocaleDateString('ko-KR')
         }));
         setMessages(formattedData);
       }
@@ -77,10 +80,9 @@ export default function ContactBoard() {
     e.preventDefault();
     
     const newMessage = {
-      name: formData.isAnonymous ? '익명' : formData.name,
-      email: formData.isAnonymous ? '' : formData.email,
+      name: formData.isAnonymous ? null : formData.name,
       message: formData.message,
-      isAnonymous: formData.isAnonymous,
+      is_anonymous: formData.isAnonymous,
     };
     
     try {
