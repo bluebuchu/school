@@ -4,6 +4,9 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
+// Service role key가 있으면 우선 사용 (RLS 우회)
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
 export async function POST(request: NextRequest) {
   console.log('🚀 Upload request started');
   
@@ -19,8 +22,12 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('✅ Supabase config found');
-    const supabase = createClient(supabaseUrl, supabaseAnonKey);
-    console.log('✅ Supabase client created');
+    
+    // Service role key가 있으면 RLS 우회용 클라이언트 사용
+    const supabaseKey = supabaseServiceKey || supabaseAnonKey;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    console.log('✅ Supabase client created with', supabaseServiceKey ? 'service role (RLS bypass)' : 'anon key');
     
     const formData = await request.formData();
     const file = formData.get('file') as File;
