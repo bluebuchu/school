@@ -3,11 +3,39 @@ import { createClient } from '@supabase/supabase-js';
 import fs from 'fs';
 import path from 'path';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 export async function GET() {
   try {
+    // Supabase가 설정되지 않은 경우 로컬 이미지만 반환
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.log('Supabase not configured, returning local images only');
+      
+      let localImages: any[] = [];
+      try {
+        const publicDirectory = path.join(process.cwd(), 'public');
+        if (fs.existsSync(publicDirectory)) {
+          const files = fs.readdirSync(publicDirectory);
+          const imageFiles = files.filter(file => {
+            const ext = path.extname(file).toLowerCase();
+            return ['.png', '.jpg', '.jpeg', '.webp'].includes(ext);
+          });
+          
+          localImages = imageFiles.map(file => ({
+            name: file,
+            path: `/${file}`,
+            label: file.replace(/\.[^/.]+$/, ''),
+            source: 'local'
+          }));
+        }
+      } catch (localError) {
+        console.log('Local images not available');
+      }
+      
+      return NextResponse.json({ images: localImages });
+    }
+    
     const supabase = createClient(supabaseUrl, supabaseAnonKey);
     
     // Supabase Storage에서 이미지 목록 가져오기

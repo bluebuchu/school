@@ -1,11 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 export async function POST(request: NextRequest) {
   try {
+    // Supabase 설정 확인
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.error('Missing Supabase environment variables');
+      return NextResponse.json({ 
+        error: 'Storage configuration error. Please check environment variables.' 
+      }, { status: 500 });
+    }
+
     const supabase = createClient(supabaseUrl, supabaseAnonKey);
     
     const formData = await request.formData();
@@ -27,10 +35,39 @@ export async function POST(request: NextRequest) {
 
     // 파일명 안전하게 처리 (한글 지원) + 타임스탬프 추가로 중복 방지
     const timestamp = Date.now();
-    const fileName = `${timestamp}_${file.name.replace(/[^가-힣a-zA-Z0-9.-]/g, '_')}`;
+    const safeFileName = file.name.replace(/[^가-힣a-zA-Z0-9.-]/g, '_');
+    const fileName = `${timestamp}_${safeFileName}`;
     
     // 파일을 ArrayBuffer로 변환
     const bytes = await file.arrayBuffer();
+    
+    // 먼저 버킷이 존재하는지 확인
+    const { data: buckets, error: listError } = await supabase.storage.listBuckets();
+    
+    if (listError) {
+      console.error('Error listing buckets:', listError);
+      return NextResponse.json({ 
+        error: 'Storage access error. Please check Supabase configuration.' 
+      }, { status: 500 });
+    }
+
+    const bucketExists = buckets?.some(bucket => bucket.name === 'member-images');
+    
+    if (!bucketExists) {
+      // 버킷이 없으면 생성 시도
+      const { error: createError } = await supabase.storage.createBucket('member-images', {
+        public: true,
+        allowedMimeTypes: ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'],
+        fileSizeLimit: 10485760 // 10MB
+      });
+      
+      if (createError && !createError.message.includes('already exists')) {
+        console.error('Error creating bucket:', createError);
+        return NextResponse.json({ 
+          error: 'Storage bucket creation failed. Please create "member-images" bucket in Supabase.' 
+        }, { status: 500 });
+      }
+    }
     
     // Supabase Storage에 업로드
     const { data, error } = await supabase.storage
@@ -42,6 +79,14 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error('Supabase upload error:', error);
+      
+      // 더 구체적인 에러 메시지
+      if (error.message.includes('Bucket not found')) {
+        return NextResponse.json({ 
+          error: 'Storage bucket not found. Please create "member-images" bucket in Supabase dashboard.' 
+        }, { status: 500 });
+      }
+      
       return NextResponse.json({ 
         error: `Upload failed: ${error.message}` 
       }, { status: 500 });
@@ -59,10 +104,10 @@ export async function POST(request: NextRequest) {
       originalName: file.name
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Upload error:', error);
     return NextResponse.json(
-      { error: 'Failed to upload file' },
+      { error: `Server error: ${error.message || 'Failed to upload file'}` },
       { status: 500 }
     );
   }

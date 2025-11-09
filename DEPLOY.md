@@ -16,13 +16,25 @@
 - **Build Command**: `npm run build` (기본값)
 - **Output Directory**: `.next` (기본값)
 
-### 3. 환경변수 설정
-배포 후 **Settings → Environment Variables**에서 추가:
+### 3. 환경변수 설정 (중요!)
+배포 전 또는 후 **Settings → Environment Variables**에서 추가:
 
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
+
+⚠️ **환경변수 설정 후 재배포 필요**: Redeploy 버튼 클릭
+
+### 4. Supabase Storage 설정
+1. [Supabase Dashboard](https://app.supabase.com) 접속
+2. **Storage** → **New Bucket** 클릭
+3. 설정:
+   - Name: `member-images`
+   - Public: ✅ 체크
+   - File size limit: 10MB
+   - Allowed MIME types: `image/*`
+4. **Create** 클릭
 
 ### 4. 배포 완료! 🎉
 - 이후 main 브랜치에 push할 때마다 자동 재배포
