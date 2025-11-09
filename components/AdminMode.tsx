@@ -398,9 +398,9 @@ function MemberManager({ members, editingMember, onEdit, onSave, onDelete, onCan
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // 파일 크기 체크 (5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      setUploadMessage('❌ 파일 크기는 5MB 이하여야 합니다');
+    // 파일 크기 체크 (10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      setUploadMessage('❌ 파일 크기는 10MB 이하여야 합니다');
       setTimeout(() => setUploadMessage(''), 3000);
       return;
     }
@@ -427,7 +427,7 @@ function MemberManager({ members, editingMember, onEdit, onSave, onDelete, onCan
       const data = await res.json();
 
       if (data.success) {
-        setUploadMessage(`✅ 업로드 완료: ${data.fileName}`);
+        setUploadMessage(`✅ 클라우드 업로드 완료: ${data.originalName}`);
         // 업로드한 이미지를 자동 선택
         setFormData(prev => ({ ...prev, image: data.path }));
         // 이미지 목록 새로고침
@@ -558,7 +558,8 @@ function MemberManager({ members, editingMember, onEdit, onSave, onDelete, onCan
             </div>
             <p className="text-xs text-gray-500">
               * 이미지가 없으면 기본 그라디언트 아바타가 표시됩니다<br/>
-              * 새 이미지를 업로드하거나 기존 이미지를 선택할 수 있습니다
+              * 새 이미지를 클라우드에 업로드하거나 기존 이미지를 선택할 수 있습니다<br/>
+              * 파일 크기: 최대 10MB, 형식: PNG, JPG, JPEG, WebP
             </p>
           </div>
           <input

@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFile, mkdir } from 'fs/promises';
-import path from 'path';
-import { existsSync } from 'fs';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 export async function POST(request: NextRequest) {
   try {
+    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+    
     const formData = await request.formData();
     const file = formData.get('file') as File;
     
@@ -12,28 +15,50 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-
-    // 파일명 안전하게 처리 (한글 지원)
-    const fileName = file.name.replace(/[^가-힣a-zA-Z0-9.-]/g, '_');
-    
-    // public 폴더 경로
-    const publicDir = path.join(process.cwd(), 'public');
-    if (!existsSync(publicDir)) {
-      await mkdir(publicDir, { recursive: true });
+    // 파일 크기 체크 (10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      return NextResponse.json({ error: 'File size must be less than 10MB' }, { status: 400 });
     }
 
-    const filePath = path.join(publicDir, fileName);
+    // 이미지 파일 체크
+    if (!file.type.startsWith('image/')) {
+      return NextResponse.json({ error: 'Only image files are allowed' }, { status: 400 });
+    }
+
+    // 파일명 안전하게 처리 (한글 지원) + 타임스탬프 추가로 중복 방지
+    const timestamp = Date.now();
+    const fileName = `${timestamp}_${file.name.replace(/[^가-힣a-zA-Z0-9.-]/g, '_')}`;
     
-    // 파일 저장
-    await writeFile(filePath, buffer);
+    // 파일을 ArrayBuffer로 변환
+    const bytes = await file.arrayBuffer();
+    
+    // Supabase Storage에 업로드
+    const { data, error } = await supabase.storage
+      .from('member-images')
+      .upload(fileName, bytes, {
+        contentType: file.type,
+        upsert: false
+      });
+
+    if (error) {
+      console.error('Supabase upload error:', error);
+      return NextResponse.json({ 
+        error: `Upload failed: ${error.message}` 
+      }, { status: 500 });
+    }
+
+    // 공개 URL 생성
+    const { data: urlData } = supabase.storage
+      .from('member-images')
+      .getPublicUrl(fileName);
 
     return NextResponse.json({ 
       success: true, 
-      path: `/${fileName}`,
-      fileName: fileName
+      path: urlData.publicUrl,
+      fileName: fileName,
+      originalName: file.name
     });
+
   } catch (error) {
     console.error('Upload error:', error);
     return NextResponse.json(
