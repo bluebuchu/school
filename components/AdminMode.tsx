@@ -348,6 +348,10 @@ function MemberManager({ members, editingMember, onEdit, onSave, onDelete, onCan
   // 동기화 상태
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState('');
+  
+  // 이미지 업로드 상태
+  const [uploading, setUploading] = useState(false);
+  const [uploadMessage, setUploadMessage] = useState('');
 
   const fetchImages = async () => {
     try {
@@ -387,6 +391,58 @@ function MemberManager({ members, editingMember, onEdit, onSave, onDelete, onCan
       setSyncing(false);
       // 3초 후 메시지 제거
       setTimeout(() => setSyncMessage(''), 3000);
+    }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // 파일 크기 체크 (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setUploadMessage('❌ 파일 크기는 5MB 이하여야 합니다');
+      setTimeout(() => setUploadMessage(''), 3000);
+      return;
+    }
+
+    // 이미지 파일 체크
+    if (!file.type.startsWith('image/')) {
+      setUploadMessage('❌ 이미지 파일만 업로드 가능합니다');
+      setTimeout(() => setUploadMessage(''), 3000);
+      return;
+    }
+
+    setUploading(true);
+    setUploadMessage('');
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const res = await fetch('/api/upload-image', {
+        method: 'POST',
+        body: formData
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        setUploadMessage(`✅ 업로드 완료: ${data.fileName}`);
+        // 업로드한 이미지를 자동 선택
+        setFormData(prev => ({ ...prev, image: data.path }));
+        // 이미지 목록 새로고침
+        await fetchImages();
+      } else {
+        setUploadMessage(`❌ 업로드 실패: ${data.error}`);
+      }
+    } catch (error) {
+      setUploadMessage('❌ 업로드 중 오류가 발생했습니다');
+    } finally {
+      setUploading(false);
+      // 3초 후 메시지 제거  
+      setTimeout(() => setUploadMessage(''), 3000);
+      // 파일 input 초기화
+      e.target.value = '';
     }
   };
 
@@ -448,6 +504,28 @@ function MemberManager({ members, editingMember, onEdit, onSave, onDelete, onCan
           {/* 이미지 선택 섹션 */}
           <div className="col-span-2 space-y-2">
             <label className="text-sm text-gray-600">프로필 이미지 선택</label>
+            
+            {/* 이미지 업로드 버튼 추가 */}
+            <div className="flex gap-2 mb-2">
+              <label className={`px-4 py-2 rounded-lg text-white font-medium cursor-pointer transition-all ${
+                uploading 
+                  ? 'bg-gray-400 cursor-not-allowed' 
+                  : 'bg-green-600 hover:bg-green-700'
+              }`}>
+                {uploading ? '업로드 중...' : '🖼️ 새 이미지 업로드'}
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  disabled={uploading}
+                  className="hidden"
+                />
+              </label>
+              {uploadMessage && (
+                <span className="text-sm flex items-center">{uploadMessage}</span>
+              )}
+            </div>
+            
             <div className="flex gap-4 items-start">
               <select
                 value={formData.image || ''}
@@ -479,7 +557,8 @@ function MemberManager({ members, editingMember, onEdit, onSave, onDelete, onCan
               )}
             </div>
             <p className="text-xs text-gray-500">
-              * 이미지가 없으면 기본 그라디언트 아바타가 표시됩니다
+              * 이미지가 없으면 기본 그라디언트 아바타가 표시됩니다<br/>
+              * 새 이미지를 업로드하거나 기존 이미지를 선택할 수 있습니다
             </p>
           </div>
           <input
