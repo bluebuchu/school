@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Hero from '@/components/Hero';
+import Introduction from '@/components/Introduction';
 import Members from '@/components/Members';
 import MeetingRecords from '@/components/MeetingRecords';
 import GoalsDashboard from '@/components/GoalsDashboard';
@@ -26,6 +27,7 @@ export default function Home() {
   return (
     <main className="min-h-screen relative">
       <Hero />
+      <Introduction />
       <Members />
       <MeetingRecords />
       <GoalsDashboard />
