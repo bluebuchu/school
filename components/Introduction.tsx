@@ -62,6 +62,16 @@ export default function Introduction() {
                 우리는 공간을 짓는 것이 아니라 관계를 만들어 갑니다.
               </p>
             </div>
+            
+            <div className={`text-center pt-8 transition-all duration-1000 delay-600 ${
+              isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+            }`}>
+              <div className="space-y-4 text-lg md:text-xl text-gray-700">
+                <p>사람-사람 관계가 자산이 되는 공동체 학교</p>
+                <p>다양한 지역에 작은 생활 거점이 생겨나고</p>
+                <p>학교는 삶과 배움이 공존하는 실험실이 됩니다.</p>
+              </div>
+            </div>
           </div>
           
           {/* Decorative element */}

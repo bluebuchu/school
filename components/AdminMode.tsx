@@ -14,13 +14,26 @@ export default function AdminMode({ isOpen, onClose }: AdminModeProps) {
   const [members, setMembers] = useState<Member[]>([]);
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
-  const [contact, setContact] = useState<Contact>({
-    id: '1',
-    email: 'contact@dasischool.com',
-    address: '서울시 강남구',
-    instagram: '#',
-    facebook: '#',
-    twitter: '#',
+  const [contact, setContact] = useState<Contact>(() => {
+    // localStorage에서 저장된 연락처 정보 불러오기 (브라우저 환경에서만)
+    if (typeof window !== 'undefined') {
+      const savedContact = localStorage.getItem('schoolContact');
+      if (savedContact) {
+        try {
+          return JSON.parse(savedContact);
+        } catch (e) {
+          console.error('Error parsing saved contact:', e);
+        }
+      }
+    }
+    return {
+      id: '1',
+      email: 'contact@dasischool.com',
+      address: '서울시 강남구',
+      instagram: '#',
+      facebook: '#',
+      twitter: '#',
+    };
   });
   const [messages, setMessages] = useState<Message[]>([]);
   
@@ -226,6 +239,16 @@ export default function AdminMode({ isOpen, onClose }: AdminModeProps) {
 
   const handleSaveContact = (contactData: Contact) => {
     setContact(contactData);
+    // localStorage에 저장 (브라우저 환경에서만)
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('schoolContact', JSON.stringify(contactData));
+      // storage 이벤트 수동 발생 (같은 탭에서도 반영되도록)
+      window.dispatchEvent(new StorageEvent('storage', {
+        key: 'schoolContact',
+        newValue: JSON.stringify(contactData),
+        url: window.location.href
+      }));
+    }
   };
 
   const handleSaveMessage = async (message: Message) => {
