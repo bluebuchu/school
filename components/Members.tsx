@@ -163,7 +163,7 @@ export default function Members() {
                 <div className="flex justify-center space-x-3">
                   {member.instagram && (
                     <button 
-                      onClick={() => openSNSPopup(member.instagram, 'instagram')}
+                      onClick={() => openSNSPopup(member.instagram!, 'instagram')}
                       className="text-softOrange hover:text-calmBrown transition-colors duration-200"
                       aria-label="Instagram"
                     >
@@ -174,7 +174,7 @@ export default function Members() {
                   )}
                   {member.facebook && (
                     <button 
-                      onClick={() => openSNSPopup(member.facebook, 'facebook')}
+                      onClick={() => openSNSPopup(member.facebook!, 'facebook')}
                       className="text-softOrange hover:text-calmBrown transition-colors duration-200"
                       aria-label="Facebook"
                     >
@@ -185,7 +185,7 @@ export default function Members() {
                   )}
                   {member.linkedin && (
                     <button 
-                      onClick={() => openSNSPopup(member.linkedin, 'linkedin')}
+                      onClick={() => openSNSPopup(member.linkedin!, 'linkedin')}
                       className="text-softOrange hover:text-calmBrown transition-colors duration-200"
                       aria-label="LinkedIn"
                     >
