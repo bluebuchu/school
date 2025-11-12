@@ -7,6 +7,7 @@ export interface Member {
   instagram?: string;
   facebook?: string;
   linkedin?: string;
+  display_order?: number;
 }
 
 export interface Meeting {

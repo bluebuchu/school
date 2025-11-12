@@ -29,6 +29,18 @@ export default function Members() {
     }
   }, [availableImages]);
 
+  // localStorage 변경 감지
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'memberOrder') {
+        fetchMembers();
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [availableImages]);
+
   useEffect(() => {
     // 멤버 변경 감지를 위한 리스너
     const subscription = supabase
@@ -71,19 +83,50 @@ export default function Members() {
     try {
       const { data, error } = await supabase
         .from('members')
-        .select('*')
-        .order('created_at', { ascending: true });
+        .select('*');
 
       if (error) {
         console.error('Error fetching members:', error);
-      } else {
-        // 이미지 경로 처리: 1) 저장된 이미지, 2) 자동 이름 매칭, 3) 기본값
-        const membersWithImages = (data || []).map(member => ({
-          ...member,
-          image: member.image || findMatchingImage(member.name) || null
-        }));
-        setMembers(membersWithImages);
+        return;
       }
+
+      let orderedMembers = data || [];
+      
+      // localStorage에서 순서 정보 가져오기
+      const savedOrder = localStorage.getItem('memberOrder');
+      
+      if (savedOrder) {
+        try {
+          const orderMap = JSON.parse(savedOrder);
+          // localStorage의 순서에 따라 정렬
+          orderedMembers.sort((a, b) => {
+            const orderA = orderMap[a.id] ?? 999;
+            const orderB = orderMap[b.id] ?? 999;
+            return orderA - orderB;
+          });
+        } catch (e) {
+          console.error('Error parsing saved order:', e);
+          // 오류 시 created_at으로 정렬
+          orderedMembers.sort((a, b) => 
+            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          );
+        }
+      } else {
+        // 저장된 순서가 없으면 display_order 또는 created_at으로 정렬
+        orderedMembers.sort((a, b) => {
+          if (a.display_order !== undefined && b.display_order !== undefined) {
+            return a.display_order - b.display_order;
+          }
+          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+        });
+      }
+
+      // 이미지 경로 처리: 1) 저장된 이미지, 2) 자동 이름 매칭, 3) 기본값
+      const membersWithImages = orderedMembers.map(member => ({
+        ...member,
+        image: member.image || findMatchingImage(member.name) || null
+      }));
+      setMembers(membersWithImages);
     } catch (error) {
       console.error('Error:', error);
     } finally {
@@ -121,7 +164,7 @@ export default function Members() {
           함께하는 사람들
         </h2>
         <p className="text-center text-gray-600 mb-12">
-          다양한 배경과 열정을 가진 우리들
+          다양한 배경과 열정을 가진 사람들
         </p>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">

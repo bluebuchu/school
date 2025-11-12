@@ -5,7 +5,7 @@ import { Contact } from '@/lib/types';
 
 const defaultContact: Contact = {
   id: '1',
-  email: 'contact@dasischool.com',
+  email: 'julywinds@gmail.com',
   address: '서울시 강남구',
   instagram: '#',
   facebook: '#',
@@ -47,12 +47,9 @@ export default function ContactBoard() {
   return (
     <section className="py-20 bg-gradient-to-b from-white to-beige">
       <div className="container mx-auto px-4">
-        <h2 className="text-4xl md:text-5xl font-bold text-center text-calmBrown mb-4">
+        <h2 className="text-4xl md:text-5xl font-bold text-center text-calmBrown mb-12">
           연락처
         </h2>
-        <p className="text-center text-gray-600 mb-12">
-          언제든지 연락주세요
-        </p>
         
         <div className="max-w-2xl mx-auto">
           <div className="bg-white rounded-lg p-8 shadow-lg">

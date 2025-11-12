@@ -50,12 +50,9 @@ export default function MeetingRecords() {
   return (
     <section className="py-20 bg-gradient-to-b from-white to-beige">
       <div className="container mx-auto px-4">
-        <h2 className="text-4xl md:text-5xl font-bold text-center text-calmBrown mb-4">
+        <h2 className="text-4xl md:text-5xl font-bold text-center text-calmBrown mb-12">
           회의 기록
         </h2>
-        <p className="text-center text-gray-600 mb-12">
-          우리의 성장 과정을 기록합니다
-        </p>
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-1">

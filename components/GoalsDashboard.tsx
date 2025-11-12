@@ -83,12 +83,9 @@ export default function GoalsDashboard() {
   return (
     <section className="py-20 bg-white">
       <div className="container mx-auto px-4">
-        <h2 className="text-4xl md:text-5xl font-bold text-center text-calmBrown mb-4">
+        <h2 className="text-4xl md:text-5xl font-bold text-center text-calmBrown mb-12">
           목표 대시보드
         </h2>
-        <p className="text-center text-gray-600 mb-12">
-          우리의 성장 과정을 시각화합니다
-        </p>
         
         <div className="mb-8 flex flex-wrap justify-center gap-2">
           <button

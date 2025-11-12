@@ -49,7 +49,7 @@ export default function Hero() {
           다시 학교
         </h1>
         <p className="text-xl md:text-2xl text-sageGreen/80 mb-16 animate-fade-in-delay">
-          함께 배우고, 함께 성장하는 우리들의 이야기
+          함께 배우고, 함께 성장하는 사람들의 이야기
         </p>
       </div>
       

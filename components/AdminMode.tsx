@@ -52,12 +52,46 @@ export default function AdminMode({ isOpen, onClose }: AdminModeProps) {
   }, [isOpen]);
 
   const fetchMembers = async () => {
-    const { data, error } = await supabase.from('members').select('*').order('created_at', { ascending: true });
+    const { data, error } = await supabase.from('members').select('*');
     if (error) {
       console.error('Error fetching members:', error);
-    } else {
-      setMembers(data || []);
+      return;
     }
+    
+    // localStorage에서 순서 정보 가져오기
+    const savedOrder = localStorage.getItem('memberOrder');
+    let orderedMembers = data || [];
+    
+    if (savedOrder) {
+      try {
+        const orderMap = JSON.parse(savedOrder);
+        // localStorage의 순서에 따라 정렬
+        orderedMembers.sort((a, b) => {
+          const orderA = orderMap[a.id] ?? 999;
+          const orderB = orderMap[b.id] ?? 999;
+          return orderA - orderB;
+        });
+      } catch (e) {
+        console.error('Error parsing saved order:', e);
+        // 오류 시 created_at으로 정렬
+        orderedMembers.sort((a, b) => 
+          new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        );
+      }
+    } else {
+      // 저장된 순서가 없으면 created_at으로 정렬
+      orderedMembers.sort((a, b) => 
+        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      );
+    }
+    
+    // display_order 할당
+    const membersWithOrder = orderedMembers.map((member, index) => ({
+      ...member,
+      display_order: index
+    }));
+    
+    setMembers(membersWithOrder);
   };
 
   const fetchMeetings = async () => {
@@ -115,11 +149,14 @@ export default function AdminMode({ isOpen, onClose }: AdminModeProps) {
             image: member.image || null,
             instagram: member.instagram || null,
             facebook: member.facebook || null,
-            linkedin: member.linkedin || null
+            linkedin: member.linkedin || null,
+            display_order: member.display_order
           })
           .eq('id', member.id);
         if (error) throw error;
       } else {
+        // Get the max display_order
+        const maxOrder = Math.max(...members.map(m => m.display_order ?? 0), -1);
         const { error } = await supabase
           .from('members')
           .insert({
@@ -130,7 +167,8 @@ export default function AdminMode({ isOpen, onClose }: AdminModeProps) {
             image: member.image || null,
             instagram: member.instagram || null,
             facebook: member.facebook || null,
-            linkedin: member.linkedin || null
+            linkedin: member.linkedin || null,
+            display_order: maxOrder + 1
           });
         if (error) throw error;
       }
@@ -276,6 +314,7 @@ export default function AdminMode({ isOpen, onClose }: AdminModeProps) {
     }
   };
 
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 overflow-y-auto">
       <div className="min-h-screen p-4">
@@ -393,6 +432,10 @@ function MemberManager({ members, editingMember, onEdit, onSave, onDelete, onCan
     }
   );
   
+  // 드래그 앤 드롭 상태
+  const [draggedMember, setDraggedMember] = useState<Member | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  
   // 동적으로 이미지 목록 가져오기
   const [availableImages, setAvailableImages] = useState([
     { value: '', label: '이미지 없음 (기본 아바타)' }
@@ -508,6 +551,52 @@ function MemberManager({ members, editingMember, onEdit, onSave, onDelete, onCan
       setFormData(editingMember);
     }
   }, [editingMember]);
+
+  // 드래그 앤 드롭 핸들러
+  const handleDragStart = (e: React.DragEvent, member: Member) => {
+    setDraggedMember(member);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverIndex(index);
+  };
+
+  const handleDrop = async (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    setDragOverIndex(null);
+    
+    if (!draggedMember) return;
+    
+    const draggedIndex = members.findIndex((m: Member) => m.id === draggedMember.id);
+    if (draggedIndex === dropIndex) return;
+    
+    // 새로운 순서로 배열 재정렬
+    const reorderedMembers = [...members];
+    reorderedMembers.splice(draggedIndex, 1);
+    reorderedMembers.splice(dropIndex, 0, draggedMember);
+    
+    // localStorage에 순서 저장
+    const orderMap: Record<string, number> = {};
+    reorderedMembers.forEach((member: Member, index: number) => {
+      orderMap[member.id] = index;
+    });
+    localStorage.setItem('memberOrder', JSON.stringify(orderMap));
+    
+    // localStorage 변경 이벤트 발생
+    window.dispatchEvent(new StorageEvent('storage', {
+      key: 'memberOrder',
+      newValue: JSON.stringify(orderMap),
+      url: window.location.href
+    }));
+    
+    setDraggedMember(null);
+    
+    // 페이지 새로고침으로 순서 반영
+    window.location.reload();
+  };
 
   return (
     <div>
@@ -680,11 +769,27 @@ function MemberManager({ members, editingMember, onEdit, onSave, onDelete, onCan
       </div>
 
       <div>
-        <h3 className="text-xl font-bold mb-4">멤버 목록</h3>
+        <h3 className="text-xl font-bold mb-4">멤버 목록 (드래그하여 순서 변경)</h3>
         <div className="space-y-2">
-          {members.map((member: Member) => (
-            <div key={member.id} className="flex justify-between items-center p-4 bg-beige rounded-lg">
+          {members.map((member: Member, index: number) => (
+            <div 
+              key={member.id} 
+              draggable
+              onDragStart={(e) => handleDragStart(e, member)}
+              onDragOver={(e) => handleDragOver(e, index)}
+              onDragLeave={() => setDragOverIndex(null)}
+              onDrop={(e) => handleDrop(e, index)}
+              className={`flex justify-between items-center p-4 rounded-lg cursor-move transition-all ${
+                (dragOverIndex !== null && dragOverIndex === index)
+                  ? 'bg-softOrange/30 border-2 border-softOrange' 
+                  : 'bg-beige hover:bg-beige/80'
+              } ${draggedMember?.id === member.id ? 'opacity-50' : ''}`}
+            >
               <div className="flex items-center gap-3">
+                {/* 드래그 핸들 아이콘 */}
+                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
+                </svg>
                 {/* 멤버 이미지 미니 프리뷰 */}
                 {member.image ? (
                   <div className="w-16 h-16 rounded-full overflow-hidden bg-gray-100">
