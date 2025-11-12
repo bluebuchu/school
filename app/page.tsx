@@ -8,10 +8,12 @@ import MeetingRecords from '@/components/MeetingRecords';
 import GoalsDashboard from '@/components/GoalsDashboard';
 import ContactBoard from '@/components/ContactBoard';
 import AdminMode from '@/components/AdminMode';
+import AdminPasswordModal from '@/components/AdminPasswordModal';
 
 export default function Home() {
   const [isAdminMode, setIsAdminMode] = useState(false);
   const [showAdminButton, setShowAdminButton] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
 
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
@@ -35,18 +37,20 @@ export default function Home() {
 
       {showAdminButton && (
         <button
-          onClick={() => setIsAdminMode(true)}
-          className="fixed bottom-8 right-8 bg-calmBrown text-white px-6 py-3 rounded-full shadow-lg hover:bg-opacity-90 transition-all z-40"
+          onClick={() => setShowPasswordModal(true)}
+          className="fixed bottom-8 right-8 bg-calmBrown text-white px-6 py-3 rounded-full shadow-lg hover:bg-opacity-90 transition-all z-40 flex items-center gap-2"
         >
-          관리자 모드
+          🔒 관리자 모드
         </button>
       )}
 
+      <AdminPasswordModal 
+        isOpen={showPasswordModal} 
+        onClose={() => setShowPasswordModal(false)}
+        onSuccess={() => setIsAdminMode(true)}
+      />
+      
       <AdminMode isOpen={isAdminMode} onClose={() => setIsAdminMode(false)} />
-
-      <div className="fixed bottom-4 left-4 text-xs text-gray-400 opacity-50">
-        Ctrl+Shift+A로 관리자 모드 활성화
-      </div>
     </main>
   );
 }
